@@ -13,6 +13,7 @@ import {Animated, StyleSheet, Text, View} from "react-native";
 import {LinearGradient} from "react-native-linear-gradient";
 import Calling from "./src/components/Calling/Calling";
 import {CallModal, CallWindow, MainWindow} from "./src/components";
+import randNickname from "./src/utils/randNickname";
 
 export default function App() {
     const scaleAnim = useRef(new Animated.Value(0)).current;
@@ -29,9 +30,12 @@ export default function App() {
     const [config, setConfig] = useState(null);
 
     const [chat, setChat] = useState([]);
+    const [nickname, setNickname] = useState('');
 
     useEffect(() => {
+        console.log('App.jsx UseEffect #1: socket request');
         socket.on('request', ({from}) => {
+            console.log('User', from, "is calling!");
             setCallFrom(from)
             setShowModal(true)
         })
@@ -39,23 +43,38 @@ export default function App() {
 
     useEffect(() => {
         if (!pc) return
+        console.log('App.jsx UseEffect #2: socket');
 
         socket
-            .on('call', (data) => {
+            .on('call', async (data) => {
+                console.log('Nickname: ', nickname);
+                console.log('[INFO] socket.on("call") data: ', data);
                 if (data.sdp) {
-                    pc.setRemoteDescription(data.sdp)
+                    try {
+                        console.log('[INFO] socket.on("call") data.sdp: ', data.sdp);
+                        await pc.setRemoteDescription(data.sdp)
+                    } catch (e) {
+                        console.error('[ERROR]  -  ', e);
+                    }
+
 
                     if (data.sdp.type === 'offer') {
                         pc.createAnswer()
                     }
                 } else {
-                    pc.addIceCandidate(data.candidate)
+                    await pc.addIceCandidate(data.candidate)
                 }
             })
             .on('end', () => finishCall(false))
     }, [pc])
 
     const startCall = (isCaller, remoteId, config) => {
+        console.log('Nickname: ', nickname)
+        if (!nickname){
+            setNickname(randNickname());
+            console.log('New nickname: ', nickname)
+        }
+
         setShowModal(false)
         setCalling(true)
         setConfig(config)
@@ -74,6 +93,8 @@ export default function App() {
     }
 
     const finishCall = (isCaller) => {
+        console.log('[INFO] Finish Call');
+
         pc.stop(isCaller)
 
         setPc(null)
@@ -84,12 +105,14 @@ export default function App() {
 
         setLocalSrc(null)
         setRemoteSrc(null)
+
+        setChat([]);
     }
 
     const rejectCall = () => {
         socket.emit('end', {to: callFrom})
 
-        setShowModal(false)
+        setShowModal(false);
     }
 
     const onMessageReceive = (newMessage) => {
@@ -112,7 +135,7 @@ export default function App() {
                         style={styles.linearGradient}>
             <View style={styles.app}>
                 <Text style={styles.appTitle}>Secret Chat</Text>
-                <MainWindow startCall={startCall} style={styles.mainWindow}/>
+                <MainWindow startCall={startCall} setNickname={setNickname} style={styles.mainWindow}/>
                 {calling && <Calling/>}
                 {showModal && (
                     <CallModal
@@ -130,6 +153,7 @@ export default function App() {
                         finishCall={finishCall}
                         chat={chat}
                         onNewMessage={onNewMessage}
+                        nickname={nickname}
                     />
                 )}
             </View>

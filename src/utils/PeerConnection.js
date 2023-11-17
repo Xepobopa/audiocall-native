@@ -1,8 +1,7 @@
 import Emitter from './Emitter'
 import MediaDevice from './MediaDevice'
 import socket from './socket'
-import {RTCPeerConnection} from 'react-native-webrtc'
-
+import {RTCPeerConnection, RTCIceCandidate, RTCSessionDescription} from 'react-native-webrtc'
 
 const CONFIG = {
     iceServers: [
@@ -61,7 +60,8 @@ class PeerConnection extends Emitter {
             socket.emit('end', {to: this.remoteId})
         }
         this.mediaDevice.stop()
-        this.pc.restartIce()
+        //this.pc.restartIce()
+        this.pc.close();
         this.off()
 
         return this
@@ -79,8 +79,8 @@ class PeerConnection extends Emitter {
         return this
     }
 
-    getDescription(desc) {
-        this.pc.setLocalDescription(desc)
+    async getDescription(desc) {
+        await this.pc.setLocalDescription(desc)
 
         socket.emit('call', {to: this.remoteId, sdp: desc})
 
@@ -91,6 +91,9 @@ class PeerConnection extends Emitter {
         console.log('[INFO] create channel');
         try {
             this.channel = this.pc.createDataChannel('channel');
+            this.channel.onclose = () => {
+                console.log('[CLOSE] DataChannel')
+            }
         } catch (e) {
             console.error('[ERROR Fail to create a data channel: ', e)
         }
@@ -114,15 +117,19 @@ class PeerConnection extends Emitter {
         this.channel.send(message);
     }
 
-    setRemoteDescription(desc) {
-        this.pc.setRemoteDescription(new RTCSessionDescription(desc))
+    async setRemoteDescription(desc) {
+        await this.pc.setRemoteDescription(new RTCSessionDescription(desc))
 
         return this
     }
 
-    addIceCandidate(candidate) {
+    async addIceCandidate(candidate) {
         if (candidate) {
-            this.pc.addIceCandidate(new RTCIceCandidate(candidate))
+            try {
+                await this.pc.addIceCandidate(new RTCIceCandidate(candidate))
+            } catch (e) {
+                console.log('[ERROR] ', e);
+            }
         }
 
         return this

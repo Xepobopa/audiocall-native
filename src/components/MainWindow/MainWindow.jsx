@@ -15,7 +15,7 @@ import {
 import {Svg} from "../../../assets/icons";
 // import Clipboard from "@react-native-clipboard/clipboard";
 
-export const MainWindow = ({startCall}) => {
+export const MainWindow = ({startCall, setNickname}) => {
     const [localId, setLocalId] = useState('')
     const [remoteId, setRemoteId] = useState('')
     const [error, setError] = useState('')
@@ -30,7 +30,7 @@ export const MainWindow = ({startCall}) => {
             .emit('init')
     }, [])
 
-    const  callWithVideo = (video) => {
+    const callWithVideo = (video) => {
         console.log('callback')
         if (!remoteId.trim() || remoteId.length < 5) {
             return setError('Friend id is not valid');
@@ -38,6 +38,8 @@ export const MainWindow = ({startCall}) => {
         const config = {audio: true, video}
         startCall(true, remoteId, config)
     }
+
+
 
     const copyToClipboard = () => {
         Clipboard.setString(localId);
@@ -62,6 +64,15 @@ export const MainWindow = ({startCall}) => {
                     onChangeText={(newText) => {
                         setError('')
                         setRemoteId(newText)
+                    }}
+                />
+                <MainWindowTextInput
+                    type='text'
+                    spellCheck={true}
+                    placeholder='Enter your nickname'
+                    style={styles.inputUnderline}
+                    onChangeText={newText => {
+                        setNickname(newText)
                     }}
                 />
                 <MainWindowError>{error}</MainWindowError>

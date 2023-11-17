@@ -14,6 +14,8 @@ class MediaDevice extends Emitter {
             })
             .catch(console.error)
 
+        console.log('[INFO] start');
+
         return this
     }
 
@@ -34,7 +36,7 @@ class MediaDevice extends Emitter {
             })
         }
         this.off()
-
+        console.log('[INFO] stop');
         return this
     }
 }

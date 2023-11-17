@@ -21,6 +21,7 @@ import {
     Window
 } from "./styled";
 import {RTCView} from "react-native-webrtc";
+import randNickname from "../../utils/randNickname";
 
 export const CallWindow = ({
                                remoteSrc,
@@ -29,32 +30,14 @@ export const CallWindow = ({
                                mediaDevice,
                                finishCall,
                                chat,
-                               onNewMessage
+                               onNewMessage,
+                               nickname
                            }) => {
     const remoteVideo = useRef()
     const localVideo = useRef()
     const localVideoSize = useRef()
     const [audio, setAudio] = useState(config?.audio)
     const [newMessage, setNewMessage] = useState('');
-    const [from, setFrom] = useState('');
-    chat = [
-        {
-            from: 'me',
-            text: "Hello from Chat!"
-        },
-        {
-            from: 'Nikita',
-            text: "Zdarova hohly"
-        },
-        {
-            from: 'me',
-            text: "ZOV Peremoga"
-        },
-        {
-            from: 'Vlad',
-            text: "卐卐卐卐卐卐卐"
-        },
-    ]
 
     useEffect(() => {
         if (remoteVideo.current && remoteSrc) {
@@ -85,7 +68,9 @@ export const CallWindow = ({
 
     const onHandleSend = (e) => {
         console.log('[INFO] onHandleSend: ', newMessage)
-        onNewMessage({from, text: newMessage});
+        setNewMessage('');
+        console.log('[INFO] send new Message: ', {from: nickname, text: newMessage})
+        onNewMessage({from: nickname, text: newMessage});
     }
 
     return (
@@ -101,11 +86,11 @@ export const CallWindow = ({
                     <ButtonContainer>
                         <ButtonIcon
                             className={audio ? '' : 'reject'}
-                            onClick={() => toggleMediaDevice('audio')}
+                            onPress={() => toggleMediaDevice('audio')}
                         >
                             <Svg.Smartphone fill={'#fff'}/>
                         </ButtonIcon>
-                        <ButtonIconDisable className='reject' onClick={() => finishCall(true)}>
+                        <ButtonIconDisable className='reject' onPress={() => finishCall(true)}>
                             <Svg.PhoneDisable fill={'#fff'}/>
                         </ButtonIconDisable>
                     </ButtonContainer>
@@ -114,7 +99,7 @@ export const CallWindow = ({
                 <MessagesArea>
                     {chat.map(message => {
                         return (
-                            message.from === 'me' ?
+                            message.from === nickname ?
                                 <MyMessage key={Math.random() * 1000}>
                                     <MessageText>{message.text}</MessageText>
                                 </MyMessage>
@@ -128,14 +113,13 @@ export const CallWindow = ({
                 </MessagesArea>
 
                 <Footer>
-                    {/*<StyledTextInput type="text" placeholder="From"*/}
-                    {/*                 onChangeText={newText => setFrom(newText)}/>*/}
                     <TextInputArea>
                         <RowContainer>
                             <StyledTextInput type="text" placeholder="Message..."
                                              placeholderTextColor={'rgba(255, 255, 255, 0.35)'}
-                                             onChangeText={onHandleChange}/>
-                            <ButtonIconSend style={{borderRadius: 13}} onClick={onHandleSend}>
+                                             onChangeText={onHandleChange}
+                                             value={newMessage}/>
+                            <ButtonIconSend style={{borderRadius: 13}} onPress={onHandleSend}>
                                 <Svg.Send fill={'#fff'}/>
                             </ButtonIconSend>
                         </RowContainer>
