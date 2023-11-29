@@ -2,6 +2,7 @@ import Emitter from './Emitter'
 import MediaDevice from './MediaDevice'
 import socket from './socket'
 import {RTCPeerConnection, RTCIceCandidate, RTCSessionDescription} from 'react-native-webrtc'
+import Security from "./security";
 
 const CONFIG = {
     iceServers: [
@@ -17,9 +18,10 @@ const CONFIG = {
 }
 
 class PeerConnection extends Emitter {
-    constructor(remoteId) {
+    constructor(remoteId, security) {
         super()
         this.remoteId = remoteId
+        this.security = security;
 
         this.pc = new RTCPeerConnection(CONFIG)
         this.pc.onicecandidate = ({candidate}) => {
@@ -100,21 +102,16 @@ class PeerConnection extends Emitter {
     }
 
     listenMessages(cb) {
-        console.log('[INFO] listenMessages event');
-        console.log('Channel: ', this.channel);
         this.pc.addEventListener('datachannel', event => {
-            console.log("[INFO] datachannel event");
             const channel = event.channel;
             channel.addEventListener('message', data => {
-                console.log('[SUCCESS] new Message received!: ', JSON.parse(data.data));
-                cb(JSON.parse(data.data));
+                cb(JSON.parse(this.security.decryptObject(data.data)));
             })
         })
     }
 
     sendMessage(message) {
-        console.log('[INFO] sendMessage channel!');
-        this.channel.send(message);
+        this.channel.send(this.security.encryptObject(JSON.stringify(message)));
     }
 
     async setRemoteDescription(desc) {

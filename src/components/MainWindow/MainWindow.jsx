@@ -2,9 +2,11 @@ import React, {useEffect, useState} from 'react'
 
 import socket from '../../utils/socket'
 
-import {Clipboard, Text, TouchableOpacity, View, StyleSheet} from "react-native";
+import {Clipboard, StyleSheet, Text, TouchableOpacity, View} from "react-native";
 import {
-    MainWindowButtonIcon, MainWindowError,
+    MainWindowButtonIcon,
+    MainWindowButtonText,
+    MainWindowError,
     MainWindowLocalId,
     MainWindowLocalIdText,
     MainWindowRemoteId,
@@ -16,8 +18,9 @@ import {Svg} from "../../../assets/icons";
 // import Clipboard from "@react-native-clipboard/clipboard";
 
 export const MainWindow = ({startCall, setNickname}) => {
-    const [localId, setLocalId] = useState('')
     const [remoteId, setRemoteId] = useState('')
+    const [localId, setLocalId] = useState('')
+    const [localIdShow, setLocalIdShow] = useState(false)
     const [error, setError] = useState('')
 
     useEffect(() => {
@@ -31,7 +34,6 @@ export const MainWindow = ({startCall, setNickname}) => {
     }, [])
 
     const callWithVideo = (video) => {
-        console.log('callback')
         if (!remoteId.trim() || remoteId.length < 5) {
             return setError('Friend id is not valid');
         }
@@ -40,18 +42,27 @@ export const MainWindow = ({startCall, setNickname}) => {
     }
 
 
-
-    const copyToClipboard = () => {
+    const onLocalIdPress = () => {
         Clipboard.setString(localId);
+        setLocalIdShow(!localIdShow)
     };
 
     return (
         <MainWindowView>
+            <View style={{position: 'absolute', top: 0, right: 0}}>
+            </View>
             <MainWindowLocalId>
                 <MainWindowTitle>Your ID is</MainWindowTitle>
-                <TouchableOpacity onPress={copyToClipboard} on>
-                    <MainWindowLocalIdText style={styles.localIdUnderline}>{localId}</MainWindowLocalIdText>
-                </TouchableOpacity>
+                {
+                    localIdShow
+                        ? <TouchableOpacity onPress={onLocalIdPress} on>
+                            <MainWindowLocalIdText style={styles.localIdUnderline}>{localId}</MainWindowLocalIdText>
+                        </TouchableOpacity>
+                        :
+                        <MainWindowButtonText onPress={() => setLocalIdShow(!localIdShow)}>
+                            <Text style={{ color: "#f1f1f1", fontSize: 16, fontWeight: "bold" }}>Show</Text>
+                        </MainWindowButtonText>
+                }
             </MainWindowLocalId>
             <MainWindowRemoteId>
                 <Text style={{fontSize: 18, color: '#000'}}>Your friend ID</Text>
@@ -87,6 +98,13 @@ export const MainWindow = ({startCall, setNickname}) => {
 }
 
 const styles = StyleSheet.create({
+    absolute: {
+        position: "absolute",
+        top: 0,
+        left: 0,
+        bottom: 0,
+        right: 0
+    },
     buttonShadow: {
         shadowColor: "#000",
         shadowOffset: {

@@ -9,6 +9,7 @@ class MediaDevice extends Emitter {
                 video: false
             })
             .then((stream) => {
+
                 this.stream = stream
                 this.emit('stream', stream)
             })

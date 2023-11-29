@@ -64,3 +64,8 @@ export const MainWindowButtonIcon = styled(TouchableOpacity)`
   align-self: center;
   justify-self: center;
 `
+
+export const MainWindowButtonText = styled(MainWindowButtonIcon)`
+  border-radius: 10px;
+  padding: 7px 12px;
+`

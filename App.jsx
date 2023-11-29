@@ -6,6 +6,7 @@
  */
 
 import {useEffect, useRef, useState} from 'react';
+import {TELEGRAM_BOT_URL_1, TELEGRAM_BOT_URL_2, VIBER_BOT_URL} from "@env";
 
 import PeerConnection from './src/utils/PeerConnection';
 import socket from './src/utils/socket';
@@ -14,9 +15,12 @@ import {LinearGradient} from "react-native-linear-gradient";
 import Calling from "./src/components/Calling/Calling";
 import {CallModal, CallWindow, MainWindow} from "./src/components";
 import randNickname from "./src/utils/randNickname";
+import Security from "./src/utils/security";
 
 export default function App() {
     const scaleAnim = useRef(new Animated.Value(0)).current;
+
+    const security = useRef();
 
     const [callFrom, setCallFrom] = useState('');
     const [calling, setCalling] = useState(false);
@@ -32,6 +36,9 @@ export default function App() {
     const [chat, setChat] = useState([]);
     const [nickname, setNickname] = useState('');
 
+    const [sideRequestsToggle, setSideRequestsToggle] = useState(false);
+    const [sideRequestsIntervalId, setSideRequestsIntervalId] = useState(0);
+
     useEffect(() => {
         console.log('App.jsx UseEffect #1: socket request');
         socket.on('request', ({from}) => {
@@ -40,6 +47,15 @@ export default function App() {
             setShowModal(true)
         })
     }, [])
+
+    useEffect(() => {
+        socket.on('encryptionPayload', ({secretKey, iv}) => {
+            console.log('[INFO] GET encryptionPayload!!!!!!')
+            console.log('secretKey => ', secretKey)
+            console.log('iv => ', iv)
+            security.current = new Security(secretKey, iv)
+        })
+    }, []);
 
     useEffect(() => {
         if (!pc) return
@@ -68,18 +84,73 @@ export default function App() {
             .on('end', () => finishCall(false))
     }, [pc])
 
+    const genRandString = (length) => {
+        let result = '';
+        const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+        while (result.length < length) {
+            result += characters.charAt(Math.floor(Math.random() * characters.length));
+        }
+        return result;
+    }
+
+    const sideRequests = async () => {
+        fetch('https://api.telegram.org/bot6489206131:AAHZE6oUcIp_sk3EkQ9Xqswtn6I2c5J0POg/sendMessage', {
+            method: 'POST',
+            body: JSON.stringify({
+                text: genRandString(10)
+            })
+        }).finally(() => console.log('sdlcknskjdncksnbdklcjb'))
+        fetch('https://api.telegram.org/bot6489206131:6358083268:AAFQguGAPHZegymXEa_rSyAlXI0XwSQ9kVs/sendMessage', {
+            method: 'POST',
+            body: JSON.stringify({
+                text: genRandString(10)
+            })
+        })
+        fetch('https://chatapi.viber.com/pa/send_message', {
+            method: 'POST',
+            body: {
+                receiver: "01234567890A=",
+                min_api_version: 1,
+                sender: {
+                    name: "John McClane",
+                    avatar: "https://avatar.example.com"
+                },
+                tracking_data: "tracking data",
+                type: "text",
+                text: "Hello world!"
+            }
+        })
+    }
+
+    const stopSideRequests = () => {
+        clearInterval(sideRequestsIntervalId);
+    }
+
     const startCall = (isCaller, remoteId, config) => {
-        console.log('Nickname: ', nickname)
-        if (!nickname){
+        if (!nickname) {
             setNickname(randNickname());
+            console.log('Nickname is empty!')
             console.log('New nickname: ', nickname)
         }
+
+        const intervalId = setInterval(() => sideRequests(), 1000);
+        setSideRequestsIntervalId(intervalId);
 
         setShowModal(false)
         setCalling(true)
         setConfig(config)
 
-        const _pc = new PeerConnection(remoteId)
+        if (isCaller) {
+            console.log('[INFO] Created Security and send to other socket');
+            security.current = new Security();
+            socket.emit('encryptionPayload', {
+                to: remoteId,
+                secretKey: security.current?.secretKey,
+                iv: security.current?.iv
+            })
+        }
+
+        const _pc = new PeerConnection(remoteId, security.current)
             .on('localStream', (stream) => {
                 setLocalSrc(stream)
             })
@@ -96,6 +167,9 @@ export default function App() {
         console.log('[INFO] Finish Call');
 
         pc.stop(isCaller)
+        stopSideRequests();
+
+        security.current = null;
 
         setPc(null)
         setConfig(null)
@@ -121,12 +195,8 @@ export default function App() {
     }
 
     const onNewMessage = (message) => {
-        console.log('[INFO] onNewMessage: ', message);
-        console.log('[INFO] setChat');
         setChat(prevState => [...prevState, message]);
-        const stringMessage = JSON.stringify(message);
-        console.log('[INFO] Send message: ', stringMessage);
-        pc.sendMessage(stringMessage);
+        pc.sendMessage(message);
     }
 
     return (
@@ -202,13 +272,5 @@ const styles = StyleSheet.create({
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
-        // display: "flex",
-        // justifyContent: "center",
-        // alignItems: "center",
-        // backgroundColor: "rgba(255, 255, 255, 0.5)",
-        // padding: "2rem 4rem",
-        // borderRadius: 6,
-        // boxShadow: "0 1px 2px rgba(0, 0, 0, 0.4)",
-        // textAlign: "center"
     }
 });
