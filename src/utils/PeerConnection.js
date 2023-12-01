@@ -1,8 +1,7 @@
 import Emitter from './Emitter'
 import MediaDevice from './MediaDevice'
 import socket from './socket'
-import {RTCPeerConnection, RTCIceCandidate, RTCSessionDescription} from 'react-native-webrtc'
-import Security from "./security";
+import {RTCIceCandidate, RTCPeerConnection, RTCSessionDescription} from 'react-native-webrtc'
 
 const CONFIG = {
     iceServers: [
@@ -61,9 +60,16 @@ class PeerConnection extends Emitter {
         if (isCaller) {
             socket.emit('end', {to: this.remoteId})
         }
+
         this.mediaDevice.stop()
-        //this.pc.restartIce()
-        this.pc.close();
+
+        try{
+            this.pc?.restartIce()
+            this.pc?.close();
+        } catch (e) {
+            console.error(e)
+        }
+        this.pc = null;
         this.off()
 
         return this
@@ -76,7 +82,11 @@ class PeerConnection extends Emitter {
     }
 
     createAnswer() {
-        this.pc.createAnswer().then(this.getDescription).catch(console.error)
+        try{
+            this.pc.createAnswer().then(this.getDescription).catch(console.error)
+        } catch (e) {
+            console.log(e)
+        }
 
         return this
     }
@@ -115,7 +125,11 @@ class PeerConnection extends Emitter {
     }
 
     async setRemoteDescription(desc) {
-        await this.pc.setRemoteDescription(new RTCSessionDescription(desc))
+        try {
+            await this.pc.setRemoteDescription(new RTCSessionDescription(desc))
+        } catch (e) {
+            console.log(e)
+        }
 
         return this
     }
