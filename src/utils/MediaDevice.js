@@ -15,7 +15,7 @@ class MediaDevice extends Emitter {
             })
             .catch(console.error)
 
-        console.log('[INFO] start media devices');
+        console.log('[INFO] start');
 
         return this
     }

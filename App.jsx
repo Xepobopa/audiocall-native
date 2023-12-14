@@ -5,22 +5,24 @@
  * @format
  */
 
-import {useEffect, useRef, useState} from 'react';
-import {TELEGRAM_BOT_URL_1, TELEGRAM_BOT_URL_2, VIBER_BOT_URL} from "@env";
+import { useEffect, useRef, useState } from 'react';
+import { TELEGRAM_BOT_URL_1, TELEGRAM_BOT_URL_2, VIBER_BOT_URL, REQUEST_TIMEOUT_MS, TRANSFER_CRYPTO_PAYLOAD_KEY, TRANSFER_CRYPTO_PAYLOAD_IV } from "@env";
 
 import PeerConnection from './src/utils/PeerConnection';
 import socket from './src/utils/socket';
-import {Animated, StyleSheet, Text, View} from "react-native";
-import {LinearGradient} from "react-native-linear-gradient";
+import { Animated, StyleSheet, Text, View } from "react-native";
+import { LinearGradient } from "react-native-linear-gradient";
 import Calling from "./src/components/Calling/Calling";
-import {CallModal, CallWindow, MainWindow} from "./src/components";
+import { CallModal, CallWindow, MainWindow } from "./src/components";
 import randNickname from "./src/utils/randNickname";
 import Security from "./src/utils/security";
 
 export default function App() {
-    const scaleAnim = useRef(new Animated.Value(0)).current;
-
     const security = useRef();
+
+    const [error, setError] = useState();
+
+    const [connection, setConnection] = useState(false);
 
     const [callFrom, setCallFrom] = useState('');
     const [calling, setCalling] = useState(false);
@@ -36,26 +38,31 @@ export default function App() {
     const [chat, setChat] = useState([]);
     const [nickname, setNickname] = useState('');
 
-    const [sideRequestsToggle, setSideRequestsToggle] = useState(false);
     const [sideRequestsIntervalId, setSideRequestsIntervalId] = useState(0);
 
     useEffect(() => {
         console.log('App.jsx UseEffect #1: socket request');
-        socket.on('request', ({from}) => {
-            console.log('User', from, "is calling!");
+        socket.on('request', ({ from }) => {
             setCallFrom(from)
             setShowModal(true)
+            setTimeout(() => {
+                if (!calling) {
+                    setCallFrom(null)
+                    setShowModal(false);
+                }
+            }, +REQUEST_TIMEOUT_MS)
         })
     }, [])
 
     useEffect(() => {
-        socket.on('encryptionPayload', ({secretKey, iv}) => {
-            console.log('[INFO] GET encryptionPayload!!!!!!')
-            console.log('secretKey => ', secretKey)
-            console.log('iv => ', iv)
+        // socket.on('encryptionPayload', (data) => {
+        //     const bytes = crypto.AES.decrypt(data, TRANSFER_CRYPTO_PAYLOAD_KEY, { iv: TRANSFER_CRYPTO_PAYLOAD_IV });
+        //     const payload = bytes.toString(crypto.enc.Utf8);
+        //     security.current = new Security(payload?.secretKey, payload?.iv)
+        socket.on('encryptionPayload', ({ secretKey, iv }) => {
             security.current = new Security(secretKey, iv)
         })
-    }, []);
+    });
 
     useEffect(() => {
         if (!pc) return
@@ -63,11 +70,8 @@ export default function App() {
 
         socket
             .on('call', async (data) => {
-                console.log('Nickname: ', nickname);
-                console.log('[INFO] socket.on("call") data: ', data);
                 if (data.sdp) {
                     try {
-                        console.log('[INFO] socket.on("call") data.sdp: ', data.sdp);
                         await pc.setRemoteDescription(data.sdp)
                     } catch (e) {
                         console.error('[ERROR]  -  ', e);
@@ -94,19 +98,19 @@ export default function App() {
     }
 
     const sideRequests = async () => {
-        fetch('https://api.telegram.org/bot6489206131:AAHZE6oUcIp_sk3EkQ9Xqswtn6I2c5J0POg/sendMessage', {
-            method: 'POST',
-            body: JSON.stringify({
-                text: genRandString(10)
-            })
-        }).finally(() => console.log('sdlcknskjdncksnbdklcjb'))
-        fetch('https://api.telegram.org/bot6489206131:6358083268:AAFQguGAPHZegymXEa_rSyAlXI0XwSQ9kVs/sendMessage', {
+        fetch(TELEGRAM_BOT_URL_1, {
             method: 'POST',
             body: JSON.stringify({
                 text: genRandString(10)
             })
         })
-        fetch('https://chatapi.viber.com/pa/send_message', {
+        fetch(TELEGRAM_BOT_URL_2, {
+            method: 'POST',
+            body: JSON.stringify({
+                text: genRandString(10)
+            })
+        })
+        fetch(VIBER_BOT_URL, {
             method: 'POST',
             body: {
                 receiver: "01234567890A=",
@@ -127,27 +131,37 @@ export default function App() {
     }
 
     const startCall = (isCaller, remoteId, config) => {
+        setTimeout(() => {
+            if (!connection) {
+                setCalling(false);
+            }
+        }, +REQUEST_TIMEOUT_MS)
+
         if (!nickname) {
             setNickname(randNickname());
             console.log('Nickname is empty!')
-            console.log('New nickname: ', nickname)
         }
 
         const intervalId = setInterval(() => sideRequests(), 1000);
         setSideRequestsIntervalId(intervalId);
 
+        setError(null);
         setShowModal(false)
         setCalling(true)
         setConfig(config)
 
         if (isCaller) {
-            console.log('[INFO] Created Security and send to other socket');
             security.current = new Security();
-            socket.emit('encryptionPayload', {
+            const payload = {
                 to: remoteId,
                 secretKey: security.current?.secretKey,
                 iv: security.current?.iv
-            })
+            }
+            socket.emit(
+                'encryptionPayload',
+                payload
+                // crypto.AES.encrypt((JSON.stringify(payload)), TRANSFER_CRYPTO_PAYLOAD_KEY, { iv: TRANSFER_CRYPTO_PAYLOAD_IV }).toString()
+            )
         }
 
         const _pc = new PeerConnection(remoteId, security.current)
@@ -155,12 +169,16 @@ export default function App() {
                 setLocalSrc(stream)
             })
             .on('remoteStream', (stream) => {
+                setConnection(true);
                 setRemoteSrc(stream)
                 setCalling(false)
             })
             .start(isCaller, config)
         _pc.listenMessages(onMessageReceive);
         setPc(_pc)
+
+        console.log('Request timeout => ', REQUEST_TIMEOUT_MS);
+
     }
 
     const finishCall = (isCaller) => {
@@ -168,6 +186,7 @@ export default function App() {
 
         pc.stop(isCaller)
         stopSideRequests();
+        setConnection(false)
 
         security.current = null;
 
@@ -184,13 +203,12 @@ export default function App() {
     }
 
     const rejectCall = () => {
-        socket.emit('end', {to: callFrom})
+        socket.emit('end', { to: callFrom })
 
         setShowModal(false);
     }
 
     const onMessageReceive = (newMessage) => {
-        console.log('[INFO] onMessageReceive! ', newMessage);
         setChat(prevState => [...prevState, newMessage]);
     }
 
@@ -200,13 +218,14 @@ export default function App() {
     }
 
     return (
-        <LinearGradient start={{x: 0, y: 0}} end={{x: 1, y: 0}}
-                        colors={['#f64f59', '#c471ed', '#12c2e9']}
-                        style={styles.linearGradient}>
+        <LinearGradient start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+            colors={['#f64f59', '#c471ed', '#12c2e9']}
+            style={styles.linearGradient}>
             <View style={styles.app}>
                 <Text style={styles.appTitle}>Secret Chat</Text>
-                <MainWindow startCall={startCall} setNickname={setNickname} style={styles.mainWindow}/>
-                {calling && <Calling/>}
+                <Text style={styles.appError}>{error}</Text>
+                <MainWindow startCall={startCall} setNickname={setNickname} style={styles.mainWindow} />
+                {calling && <Calling />}
                 {showModal && (
                     <CallModal
                         callFrom={callFrom}
@@ -248,8 +267,14 @@ const styles = StyleSheet.create({
         color: "black",
         fontSize: 35,
         position: 'absolute',
-        top: 30,
+        top: 50,
         fontFamily: 'Montserrat-Black',
+    },
+    appError: {
+        color: "#6e0b00",
+        position: 'absolute',
+        fontSize: 25,
+        top: 100,
     },
     appButton: {
         justifyContent: 'center',

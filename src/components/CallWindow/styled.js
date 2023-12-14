@@ -19,6 +19,7 @@ export const MainContainer = styled(View)`
 
 export const Header = styled(View)`
   padding: 15px 0;
+  padding-top: 35px;
   justify-content: center;
   align-items: center;
   background-color: rgba(40,46,51,255);
@@ -79,6 +80,7 @@ export const Footer = styled(View)`
 `
 
 export const TextInputArea = styled(View)`
+  padding-bottom: 20px
 `
 
 export const MessagesArea = styled(ScrollView)`

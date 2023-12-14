@@ -1,5 +1,5 @@
 import styled from "styled-components";
-import {View, Text, TextInput, TouchableOpacity} from "react-native";
+import { View, Text, TextInput, TouchableOpacity } from "react-native";
 
 export const MainWindowView = styled(View)`
   display: flex;
@@ -12,6 +12,7 @@ export const MainWindowView = styled(View)`
   flex-direction: column;
   padding: 40px;
   width: 300px;
+  max-height: 400px
 `
 
 export const MainWindowLocalId = styled(View)`
@@ -54,6 +55,8 @@ export const MainWindowTextInput = styled(TextInput)`
   text-align: center;
   font-size: 18px;
   color: black;
+  border-bottom-color: black;
+  border-bottom-width: 1px;
 `
 
 export const MainWindowButtonIcon = styled(TouchableOpacity)`

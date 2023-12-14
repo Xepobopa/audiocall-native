@@ -1,6 +1,6 @@
-import React, {useEffect, useRef, useState} from 'react'
-import {StyleSheet} from "react-native";
-import {Svg} from "../../../assets/icons";
+import React, { useEffect, useRef, useState } from 'react'
+import { KeyboardAvoidingView, StyleSheet, Vibration } from "react-native";
+import { Svg } from "../../../assets/icons";
 import {
     ButtonContainer,
     ButtonIcon,
@@ -20,24 +20,40 @@ import {
     Title,
     Window
 } from "./styled";
-import {RTCView} from "react-native-webrtc";
-import randNickname from "../../utils/randNickname";
+import { RTCView } from "react-native-webrtc";
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view'
+import { NativeModules } from 'react-native';
 
 export const CallWindow = ({
-                               remoteSrc,
-                               localSrc,
-                               config,
-                               mediaDevice,
-                               finishCall,
-                               chat,
-                               onNewMessage,
-                               nickname
-                           }) => {
+    remoteSrc,
+    localSrc,
+    config,
+    mediaDevice,
+    finishCall,
+    chat,
+    onNewMessage,
+    nickname
+}) => {
     const remoteVideo = useRef()
     const localVideo = useRef()
     const localVideoSize = useRef()
     const [audio, setAudio] = useState(config?.audio)
     const [newMessage, setNewMessage] = useState('');
+
+    function activateKeepAwake() {
+        NativeModules.KCKeepAwake.activate();
+        console.log('start KCKeepAwake!')
+    }
+
+    function deactivateKeepAwake() {
+        console.log('end KCKeepAwake!')
+        NativeModules.KCKeepAwake.deactivate();
+    }
+
+    useEffect(() => {
+        Vibration.vibrate([0.3, 0.3])
+        activateKeepAwake();
+    }, [])
 
     useEffect(() => {
         if (remoteVideo.current && remoteSrc) {
@@ -50,7 +66,7 @@ export const CallWindow = ({
 
     useEffect(() => {
         if (mediaDevice) {
-            //mediaDevice.toggle('Video', video)
+
             mediaDevice.toggle('Audio', audio)
         }
     }, [mediaDevice])
@@ -67,65 +83,69 @@ export const CallWindow = ({
     }
 
     const onHandleSend = (e) => {
-        console.log('[INFO] onHandleSend: ', newMessage)
+        if (!newMessage) {
+            return;
+        }
         setNewMessage('');
-        console.log('[INFO] send new Message: ', {from: nickname, text: newMessage})
-        onNewMessage({from: nickname, text: newMessage});
+        onNewMessage({ from: nickname, text: newMessage });
     }
 
     return (
-
         <Window>
             <MainContainer>
                 <Header>
-                    <RTCView streamURL={remoteSrc.toURL()}/>
+                    <RTCView streamURL={remoteSrc.toURL()} />
                     <RowContainer>
-                        <Title style={{color: 'white'}}>CHAT</Title>
-                        <Svg.ConnectionP2P fill={'#fff'}/>
+                        <Title style={{ color: 'white' }}>CHAT</Title>
+                        <Svg.ConnectionP2P fill={'#fff'} />
                     </RowContainer>
                     <ButtonContainer>
                         <ButtonIcon
                             className={audio ? '' : 'reject'}
                             onPress={() => toggleMediaDevice('audio')}
                         >
-                            <Svg.Smartphone fill={'#fff'}/>
+                            <Svg.Smartphone fill={'#fff'} />
                         </ButtonIcon>
-                        <ButtonIconDisable className='reject' onPress={() => finishCall(true)}>
-                            <Svg.PhoneDisable fill={'#fff'}/>
+                        <ButtonIconDisable className='reject' onPress={() => {
+                            deactivateKeepAwake();
+                            finishCall(true)
+                        }}>
+                            <Svg.PhoneDisable fill={'#fff'} />
                         </ButtonIconDisable>
                     </ButtonContainer>
                 </Header>
 
-                <MessagesArea>
-                    {chat.map(message => {
-                        return (
-                            message.from === nickname ?
-                                <MyMessage key={Math.random() * 1000}>
-                                    <MessageText>{message.text}</MessageText>
-                                </MyMessage>
-                                :
-                                <OtherMessage key={Math.random() * 1000}>
-                                    <From>{message.from}</From>
-                                    <MessageText>{message.text}</MessageText>
-                                </OtherMessage>
-                        )
-                    })}
-                </MessagesArea>
+                <KeyboardAwareScrollView contentContainerStyle={{ flex: 1 }}>
+                    <MessagesArea>
+                        {chat.map(message => {
+                            return (
+                                message.from === nickname ?
+                                    <MyMessage key={Math.random() * 1000}>
+                                        <MessageText>{message.text}</MessageText>
+                                    </MyMessage>
+                                    :
+                                    <OtherMessage key={Math.random() * 1000}>
+                                        <From>{message.from}</From>
+                                        <MessageText>{message.text}</MessageText>
+                                    </OtherMessage>
+                            )
+                        })}
+                    </MessagesArea>
 
-                <Footer>
-                    <TextInputArea>
-                        <RowContainer>
-                            <StyledTextInput type="text" placeholder="Message..."
-                                             placeholderTextColor={'rgba(255, 255, 255, 0.35)'}
-                                             onChangeText={onHandleChange}
-                                             value={newMessage}/>
-                            <ButtonIconSend style={{borderRadius: 13}} onPress={onHandleSend}>
-                                <Svg.Send fill={'#fff'}/>
-                            </ButtonIconSend>
-                        </RowContainer>
-                    </TextInputArea>
-                </Footer>
-
+                    <Footer>
+                        <TextInputArea>
+                            <RowContainer>
+                                <StyledTextInput type="text" placeholder="Message..."
+                                    placeholderTextColor={'rgba(255, 255, 255, 0.35)'}
+                                    onChangeText={onHandleChange}
+                                    value={newMessage} />
+                                <ButtonIconSend style={{ borderRadius: 13 }} onPress={onHandleSend}>
+                                    <Svg.Send fill={'#fff'} />
+                                </ButtonIconSend>
+                            </RowContainer>
+                        </TextInputArea>
+                    </Footer>
+                </KeyboardAwareScrollView>
             </MainContainer>
         </Window>
     )

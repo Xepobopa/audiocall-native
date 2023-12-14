@@ -2,16 +2,20 @@ import Emitter from './Emitter'
 import MediaDevice from './MediaDevice'
 import socket from './socket'
 import {RTCIceCandidate, RTCPeerConnection, RTCSessionDescription} from 'react-native-webrtc'
+import { TURN_URL, TURN_USERNAME, TURN_CREDENTIALS } from "@env";
 
 const CONFIG = {
     iceServers: [
         {
-            urls: "stun:stun.l.google.com:19302"
+            urls: "stun:stun1.l.google.com:19302",
         },
         {
-            urls: "turn:relay1.expressturn.com:3478",
-            username: "ef238ZHYV5YA3ND0H2",
-            credential: "GpyIpSclVoKFLzgs"
+            urls: "stun:stun2.l.google.com:19302",
+        },
+        {
+            urls: TURN_URL,
+            username: TURN_USERNAME,
+            credential: TURN_CREDENTIALS
         },
     ]
 }
@@ -76,7 +80,11 @@ class PeerConnection extends Emitter {
     }
 
     createOffer() {
-        this.pc.createOffer().then(this.getDescription).catch(console.error)
+        this.pc.createOffer({
+            iceRestart: true,
+            offerToReceiveAudio: true,
+            offerToReceiveVideo: false,
+          }).then(this.getDescription).catch(console.error)
 
         return this
     }

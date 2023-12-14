@@ -4,9 +4,6 @@ export default class Security {
     constructor(secretKey, iv) {
         this.secretKey = secretKey ? secretKey : this.genRandString(32);
         this.iv = iv ? iv : this.genRandString(32);
-        console.log('Security class created with data: ')
-        console.log('secretKey => ', this.secretKey)
-        console.log('iv => ', this.iv)
     }
 
     genRandString(bytes = 128) {
